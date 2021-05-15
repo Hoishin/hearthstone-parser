@@ -1,17 +1,22 @@
-import {concat, merge} from 'lodash';
-import {BlockData, CardEntity, Entry, FullEntity} from '../readers';
-import {GameState} from '../../GameState';
-import {isCard} from './util';
+import { concat, merge } from "lodash";
+
+import { GameState } from "../../game-state";
+import { BlockData, CardEntity, Entry, FullEntity } from "../readers";
+
+import { isCard } from "./util";
 
 /**
  * Used to receive full entity data from the full block scope or the game state.
  */
 class EntityCollection {
 	entities: Record<number, CardEntity> = {};
-	constructor(private readonly gameState: GameState) { }
+	constructor(private readonly gameState: GameState) {}
 
 	add(entity: CardEntity) {
-		this.entities[entity.entityId] = merge(this.get(entity.entityId), entity);
+		this.entities[entity.entityId] = merge(
+			this.get(entity.entityId),
+			entity
+		);
 	}
 
 	/**
@@ -27,13 +32,21 @@ class EntityCollection {
 	}
 
 	get(entityIdOrCard: number | CardEntity): CardEntity {
-		const entityId = typeof entityIdOrCard === 'number' ? entityIdOrCard : entityIdOrCard?.entityId;
+		const entityId =
+			typeof entityIdOrCard === "number"
+				? entityIdOrCard
+				: entityIdOrCard?.entityId;
 		if (entityId in this.entities) {
 			return this.entities[entityId];
 		}
 
-		const newEntity = this.gameState.getEntity(entityId) ??
-			{cardName: '', entityId, player: 'bottom', type: 'card', tags: {}};
+		const newEntity = this.gameState.getEntity(entityId) ?? {
+			cardName: "",
+			entityId,
+			player: "bottom",
+			type: "card",
+			tags: {},
+		};
 		return newEntity;
 	}
 }
@@ -57,7 +70,11 @@ export class BlockContext {
 	public readonly blocks: BlockData[];
 	public readonly source: CardEntity | undefined;
 
-	constructor(public gameState: GameState, public block: BlockData, entities?: EntityCollection) {
+	constructor(
+		public gameState: GameState,
+		public block: BlockData,
+		entities?: EntityCollection
+	) {
 		if (isCard(block.entity)) {
 			this.source = block.entity;
 		}
@@ -72,11 +89,15 @@ export class BlockContext {
 		}
 
 		// Create Entry List, flatten subpower blocks
-		const entryParts = block.entries.map(e => e.type === 'subspell' ? e.entries : e);
+		const entryParts = block.entries.map((e) =>
+			e.type === "subspell" ? e.entries : e
+		);
 		this.flattenedEntries = concat([], ...entryParts);
 
 		// Filter sub blocks
-		this.blocks = block.entries.filter(b => b.type === 'block') as BlockData[];
+		this.blocks = block.entries.filter(
+			(b) => b.type === "block"
+		) as BlockData[];
 	}
 
 	createChild(block: BlockData) {
@@ -102,7 +123,9 @@ export class BlockContext {
 	getMergedEntity(entityId: number) {
 		// Get all full_entities and merge them (handles Create > Update)
 		const allEmbedded = this.flattenedEntries.filter(
-			e => e.type === 'embedded_entity' && e.entity.entityId === entityId) as FullEntity[];
+			(e) =>
+				e.type === "embedded_entity" && e.entity.entityId === entityId
+		) as FullEntity[];
 		if (allEmbedded.length) {
 			return merge(allEmbedded[0], ...allEmbedded.slice(1)) as FullEntity;
 		}
@@ -116,25 +139,25 @@ export class BlockContext {
 	 * @param data
 	 */
 	detectHealthChange(data: Entry) {
-		if (data.type === 'tag' && isCard(data.entity) && data.value !== '0') {
-			if (data.tag === 'PREDAMAGE') {
+		if (data.type === "tag" && isCard(data.entity) && data.value !== "0") {
+			if (data.tag === "PREDAMAGE") {
 				this.nextDamageEntityId = data.entity?.entityId;
-			} else if (data.tag === 'PREHEALING') {
+			} else if (data.tag === "PREHEALING") {
 				this.nextHealingEntityId = data.entity?.entityId;
 			}
 		}
 
-		if (data.type === 'meta' && data.key === 'DAMAGE') {
+		if (data.type === "meta" && data.key === "DAMAGE") {
 			return {
 				entityId: this.nextDamageEntityId,
-				values: {damage: data.value}
+				values: { damage: data.value },
 			};
 		}
 
-		if (data.type === 'meta' && data.key === 'HEALING') {
+		if (data.type === "meta" && data.key === "HEALING") {
 			return {
 				entityId: this.nextHealingEntityId,
-				values: {healing: data.value}
+				values: { healing: data.value },
 			};
 		}
 
@@ -142,7 +165,7 @@ export class BlockContext {
 	}
 
 	commitToState() {
-		this.getAllEntities().forEach(e => this.gameState.resolveEntity(e));
+		this.getAllEntities().forEach((e) => this.gameState.resolveEntity(e));
 	}
 
 	/**
@@ -154,7 +177,7 @@ export class BlockContext {
 	 * @param data
 	 */
 	private applyEntry(entry: Entry) {
-		if (entry.type === 'block') {
+		if (entry.type === "block") {
 			if (isCard(entry.entity)) {
 				this.entities.add(entry.entity);
 			}
@@ -162,9 +185,9 @@ export class BlockContext {
 			if (isCard(entry.target)) {
 				this.entities.add(entry.target);
 			}
-		} else if ('entity' in entry && isCard(entry.entity)) {
+		} else if ("entity" in entry && isCard(entry.entity)) {
 			const entity = entry.entity;
-			if (entry.type === 'tag') {
+			if (entry.type === "tag") {
 				this.entities.setTag(entity, entry.tag, entry.value);
 			} else {
 				this.entities.add(entity);
@@ -172,7 +195,7 @@ export class BlockContext {
 		}
 
 		// Apply entries recursively
-		if (entry.type === 'block' || entry.type === 'subspell') {
+		if (entry.type === "block" || entry.type === "subspell") {
 			for (const sub of entry.entries) {
 				this.applyEntry(sub);
 			}

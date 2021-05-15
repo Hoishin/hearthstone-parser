@@ -1,61 +1,67 @@
-import {GameState} from '../../GameState';
-import cards from '../../data/cards';
-import {CardEntity, createSimpleRegexParser, identifyPlayer, readEntityString} from './base';
+import cards from "../../data/cards";
+import { GameState } from "../../game-state";
+
+import {
+	CardEntity,
+	createSimpleRegexParser,
+	identifyPlayer,
+	readEntityString,
+} from "./base";
 
 /**
  * Object derived from FULL_ENTITY or SHOW_ENTITY sub-blocks.
  */
 export interface FullEntity {
-	type: 'embedded_entity';
-	action: 'Creating' | 'Updating';
+	type: "embedded_entity";
+	action: "Creating" | "Updating";
 	entity: CardEntity;
 	cardId: string;
-	player?: 'top' | 'bottom';
+	player?: "top" | "bottom";
 }
 
 export class FullEntityReader {
 	private readonly fullStartReader = createSimpleRegexParser(
 		/^(\s*)FULL_ENTITY - (Creating|Updating) (?:ID=(\d+)|(\[.*\])) CardID=(.*)/,
-		parts => {
+		(parts) => {
 			return {
 				indentation: parts[1],
-				type: parts[2] as 'Creating'|'Updating',
+				type: parts[2] as "Creating" | "Updating",
 				entityIdOrString: parts[3],
-				cardId: parts[4]
+				cardId: parts[4],
 			};
 		}
 	);
 
 	private readonly changeStartReader = createSimpleRegexParser(
 		/^(\s*)CHANGE_ENTITY - Updating Entity=(\[.*\]) CardID=(.*)/,
-		parts => {
+		(parts) => {
 			return {
 				indentation: parts[1],
-				type: 'Updating' as const, // Note: Typescript is weird
+				type: "Updating" as const, // Note: Typescript is weird
 				entityIdOrString: parts[2],
-				cardId: parts[3]
+				cardId: parts[3],
 			};
 		}
 	);
 
 	private readonly showStartReader = createSimpleRegexParser(
 		/^(\s*)SHOW_ENTITY - Updating Entity=(.*) CardID=(.*)/,
-		parts => {
+		(parts) => {
 			return {
 				indentation: parts[1],
-				type: 'Updating' as const, // Note: Typescript is weird
+				type: "Updating" as const, // Note: Typescript is weird
 				entityIdOrString: parts[2],
-				cardId: parts[3]
+				cardId: parts[3],
 			};
 		}
 	);
 
 	private readonly tagReader = createSimpleRegexParser(
 		/^(\s*)tag=(.*) value=(.*)/,
-		parts => ({
+		(parts) => ({
 			indentation: parts[1],
 			tag: parts[2],
-			value: parts[3]
+			value: parts[3],
 		})
 	);
 
@@ -65,7 +71,7 @@ export class FullEntityReader {
 	 * Creates a new Full Entity Reader
 	 * @param prefix The prefix of each line. For example: "[Power] GameState.DebugPrintPower() -"
 	 */
-	constructor(private readonly prefix = '') {}
+	constructor(private readonly prefix = "") {}
 
 	/**
 	 * Reads the line, and returns if it was handled or not and any result data.
@@ -77,11 +83,14 @@ export class FullEntityReader {
 	 * @param line
 	 * @param gameState
 	 */
-	handleLine(line: string, gameState: GameState): {handled: boolean; result?: FullEntity} {
+	handleLine(
+		line: string,
+		gameState: GameState
+	): { handled: boolean; result?: FullEntity } {
 		// If a prefix is stated, check that first
 		if (this.prefix?.length > 0) {
 			if (!line.startsWith(this.prefix)) {
-				return {handled: false};
+				return { handled: false };
 			}
 
 			line = line.substring(this.prefix.length);
@@ -91,7 +100,10 @@ export class FullEntityReader {
 		let result: FullEntity | undefined;
 
 		// Read block start data
-		const startData = this.fullStartReader(line) ?? this.changeStartReader(line) ?? this.showStartReader(line);
+		const startData =
+			this.fullStartReader(line) ??
+			this.changeStartReader(line) ??
+			this.showStartReader(line);
 		if (startData) {
 			handled = true;
 
@@ -101,17 +113,23 @@ export class FullEntityReader {
 				this._entity = null;
 			}
 
-			const entity = readEntityString(startData.entityIdOrString, gameState);
-			if (entity?.type === 'card') {
+			const entity = readEntityString(
+				startData.entityIdOrString,
+				gameState
+			);
+			if (entity?.type === "card") {
 				this._entity = {
-					type: 'embedded_entity',
+					type: "embedded_entity",
 					action: startData.type,
 					cardId: startData.cardId,
-					entity: {...entity, cardId: cards[startData.cardId]?.dbfId}
+					entity: {
+						...entity,
+						cardId: cards[startData.cardId]?.dbfId,
+					},
 				};
 			}
 
-			return {handled, result};
+			return { handled, result };
 		}
 
 		// Read tag data if we already have an entity in progress
@@ -122,11 +140,14 @@ export class FullEntityReader {
 
 				this._entity.entity.tags[tagData.tag] = tagData.value;
 
-				if (tagData.tag === 'CONTROLLER') {
-					this._entity.player = identifyPlayer(gameState, parseInt(tagData.value, 10));
+				if (tagData.tag === "CONTROLLER") {
+					this._entity.player = identifyPlayer(
+						gameState,
+						parseInt(tagData.value, 10)
+					);
 				}
 
-				return {handled, result};
+				return { handled, result };
 			}
 
 			// This line is not a full entity anymore, clear what we have
@@ -134,6 +155,6 @@ export class FullEntityReader {
 			this._entity = null;
 		}
 
-		return {handled, result};
+		return { handled, result };
 	}
 }

@@ -1,7 +1,15 @@
-import {GameState} from '../../GameState';
-import {FullEntity} from '.';
-import {FullEntityReader} from './full-entity-reader';
-import {createSimpleRegexParser, Entity, MetaData, readEntityString, TagData} from './base';
+import { GameState } from "../../game-state";
+
+import {
+	createSimpleRegexParser,
+	Entity,
+	MetaData,
+	readEntityString,
+	TagData,
+} from "./base";
+import { FullEntityReader } from "./full-entity-reader";
+
+import { FullEntity } from ".";
 
 export type Entry = BlockData | SubSpell | TagData | MetaData | FullEntity;
 
@@ -9,7 +17,7 @@ export type Entry = BlockData | SubSpell | TagData | MetaData | FullEntity;
  * Object derived from the combination of elements between BLOCK_START and BLOCK_END
  */
 export interface BlockData {
-	type: 'block';
+	type: "block";
 	blockType: string;
 	triggerKeyword?: string;
 	entity?: Entity;
@@ -18,7 +26,7 @@ export interface BlockData {
 }
 
 export interface SubSpell {
-	type: 'subspell';
+	type: "subspell";
 	spell: string;
 	entries: Entry[];
 }
@@ -35,35 +43,35 @@ export class BlockReader {
 
 	private readonly blockStartReader = createSimpleRegexParser(
 		/\s*BLOCK_START BlockType=([A-Z]*) Entity=(.*) EffectCardId=(.*) EffectIndex=(.*) Target=(.*) SubOption=(.*) (?:TriggerKeyword=(.*))?/,
-		parts => ({
+		(parts) => ({
 			blockType: parts[1],
 			entityString: parts[2],
 			targetString: parts[5],
-			trigger: parts[7]
+			trigger: parts[7],
 		})
 	);
 
 	private readonly tagReader = createSimpleRegexParser(
 		/\s*TAG_CHANGE Entity=(.*) tag=(.*) value=([\w\d_.-]*)/,
-		parts => ({
+		(parts) => ({
 			entityString: parts[1],
 			tag: parts[2],
-			value: parts[3]
+			value: parts[3],
 		})
 	);
 
 	private readonly metaReader = createSimpleRegexParser(
 		/\s*META_DATA - Meta=([A-Z]+) Data=(\d*) Info(?:Count)?=(.*)/,
-		parts => ({
+		(parts) => ({
 			key: parts[1],
-			value: parseInt(parts[2], 10)
+			value: parseInt(parts[2], 10),
 		})
 	);
 
 	private readonly subSpellReader = createSimpleRegexParser(
 		/\s*SUB_SPELL_START - SpellPrefabGUID=(.*):(.*) Source=(.*) TargetCount=(.*)/,
-		parts => ({
-			spell: parts[1]
+		(parts) => ({
+			spell: parts[1],
 		})
 	);
 
@@ -95,11 +103,12 @@ export class BlockReader {
 			const target = readEntityString(blockStart.targetString, gameState);
 
 			const blockData: BlockData = {
-				type: 'block',
+				type: "block",
 				blockType: blockStart.blockType,
 				triggerKeyword: blockStart.trigger,
-				entity, target,
-				entries: []
+				entity,
+				target,
+				entries: [],
 			};
 
 			this.stack.push(blockData);
@@ -107,7 +116,7 @@ export class BlockReader {
 		}
 
 		// If a block has ended, return it
-		if (line.includes('BLOCK_END') || line.includes('SUB_SPELL_END')) {
+		if (line.includes("BLOCK_END") || line.includes("SUB_SPELL_END")) {
 			const mostRecentBlock = this.stack.pop();
 			if (!mostRecentBlock) {
 				// This shouldn't ever happen
@@ -130,8 +139,8 @@ export class BlockReader {
 
 		const subSpellStart = this.subSpellReader(line);
 		if (subSpellStart) {
-			const {spell} = subSpellStart;
-			this.stack.push({type: 'subspell', spell, entries: []});
+			const { spell } = subSpellStart;
+			this.stack.push({ type: "subspell", spell, entries: [] });
 		}
 
 		this._readTagChange(line, gameState);
@@ -156,14 +165,17 @@ export class BlockReader {
 		}
 
 		const mostRecentBlock = this.mostRecentBlock;
-		const {tag, value, entityString} = tagData;
+		const { tag, value, entityString } = tagData;
 		let entity: Entity | undefined;
 
 		const entityId = parseInt(entityString, 10);
 		if (entityId) {
 			// Try to get some more data from the current block (like the player)
-			const existing = mostRecentBlock.entries.find(e =>
-				e.type === 'embedded_entity' && e.entity.entityId === entityId) as FullEntity;
+			const existing = mostRecentBlock.entries.find(
+				(e) =>
+					e.type === "embedded_entity" &&
+					e.entity.entityId === entityId
+			) as FullEntity;
 			if (existing) {
 				entity = existing.entity;
 			}
@@ -171,7 +183,7 @@ export class BlockReader {
 			entity = readEntityString(entityString, gameState);
 		}
 
-		mostRecentBlock.entries.push({type: 'tag', entity, tag, value});
+		mostRecentBlock.entries.push({ type: "tag", entity, tag, value });
 		return true;
 	}
 
@@ -185,9 +197,9 @@ export class BlockReader {
 		const metaData = this.metaReader(line);
 		if (metaData) {
 			mostRecentBlock.entries.push({
-				type: 'meta',
+				type: "meta",
 				key: metaData.key,
-				value: metaData.value
+				value: metaData.value,
 			});
 			return true;
 		}
@@ -199,7 +211,10 @@ export class BlockReader {
 	 * Parses lines regarding FULL_ENTITY and returns if the line has been used to parse one.
 	 * This sort of function is needed because there is no clear end-indicator for the type.
 	 */
-	private _handleEmbeddedEntities(line: string, gameState: GameState): boolean {
+	private _handleEmbeddedEntities(
+		line: string,
+		gameState: GameState
+	): boolean {
 		if (this.stack.length === 0) {
 			return false;
 		}
@@ -207,7 +222,10 @@ export class BlockReader {
 		const mostRecentBlock = this.stack[this.stack.length - 1];
 
 		// Read FULL_ENTITY lines.
-		const fullEntityResult = this.fullEntityReader.handleLine(line, gameState);
+		const fullEntityResult = this.fullEntityReader.handleLine(
+			line,
+			gameState
+		);
 		if (fullEntityResult.result) {
 			mostRecentBlock.entries.push(fullEntityResult.result);
 		}

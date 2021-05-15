@@ -1,9 +1,10 @@
-import {keyBy} from 'lodash';
+import { keyBy } from "lodash";
 
-type CardType = {dbfId: number; id: string; name: string};
+import cardsJson from "./cards.json";
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const cardsJson: CardType[] = require('../../data/cards.json');
-const cardData = keyBy(cardsJson, c => c.id) as {[key: string]: CardType | undefined};
+type CardType = { dbfId: number; id: string; name: string };
+const cardData = keyBy(cardsJson, (c) => c.id) as {
+	[id: string]: CardType | undefined;
+};
 
 export default cardData;

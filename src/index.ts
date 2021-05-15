@@ -1,3 +1,2 @@
-export * from './LogWatcher';
-export {Events} from './line-parsers';
-export {GameState, Player} from './GameState';
+export * from "./log-watcher";
+export { GameState, Player } from "./game-state";

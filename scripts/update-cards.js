@@ -12,7 +12,7 @@ const main = async () => {
 	);
 
 	fs.writeFileSync(
-		path.resolve(__dirname, "../data/cards.json"),
+		path.resolve(__dirname, "../src/data/cards.json"),
 		JSON.stringify(cards)
 	);
 

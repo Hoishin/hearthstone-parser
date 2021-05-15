@@ -1,4 +1,4 @@
-import {Class} from './meta';
+import { Class } from "./meta";
 
 export const secretToClass: { [id: string]: Class } = {
 	AT_002: Class.Mage,
@@ -102,5 +102,5 @@ export const secretToClass: { [id: string]: Class } = {
 	VAN_EX1_610: Class.Hunter,
 	VAN_EX1_611: Class.Hunter,
 	VAN_tt_010: Class.Mage,
-	YOP_017: Class.Rogue
+	YOP_017: Class.Rogue,
 };
